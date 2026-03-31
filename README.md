@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿# 🚀 Smart Navigation Assistant (SNA)
+=======
+# 🚀 Smart Navigation Assistant (SNA)
+>>>>>>> 96afdf2c9b3832f5d8b4a5b9631e6510b2854d45
 
 ## 📌 Problem Statement
 Current navigation apps like Google Maps require manual interaction while traveling.  
@@ -47,3 +51,11 @@ Flow:
 3. Gemini processes intent  
 4. Places API fetches results  
 5. Route updates automatically  
+<<<<<<< HEAD
+=======
+
+---
+
+## 📂 Proof of Google AI Usage
+Add screenshots inside `/proof` folder:
+>>>>>>> 96afdf2c9b3832f5d8b4a5b9631e6510b2854d45
