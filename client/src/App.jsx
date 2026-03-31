@@ -19,6 +19,19 @@ const KERALA_BOUNDS = {
   west: 74.5,
 };
 
+const DARK_MAP_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#0b1220" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#c8d4ff" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0b1220" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1d2a44" }] },
+  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#203556" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2b4f86" }] },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: "#141f34" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#0f2c25" }] },
+  { featureType: "transit", elementType: "geometry", stylers: [{ color: "#15243f" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#04253d" }] },
+];
+
 const SYSTEM_PROMPT = `You are SNA - a smart navigation assistant for Kerala, India.
 You help users find nearby amenities while traveling.
 
@@ -611,6 +624,7 @@ export default function App() {
           center: CONFIG.DEFAULT_CENTER,
           zoom: 13,
           gestureHandling: "greedy",
+          styles: DARK_MAP_STYLE,
         });
 
         mapRef.current = map;
@@ -620,8 +634,9 @@ export default function App() {
           map,
           suppressMarkers: false,
           polylineOptions: {
-            strokeColor: "#1565C0",
-            strokeWeight: 5,
+            strokeColor: "#3bf6ff",
+            strokeOpacity: 0.95,
+            strokeWeight: 6,
           },
         });
         placesServiceRef.current = new window.google.maps.places.PlacesService(map);
