@@ -1,34 +1,54 @@
-# Smart Navigation Assistant (React + Node)
+# 🚀 Smart Navigation Assistant (SNA)
 
-## Structure
-- `client/` - React (Vite) frontend
-- `server/` - Node.js + Express backend (Gemini proxy)
+## 📌 Problem Statement
+Current navigation apps like Google Maps require manual interaction while traveling.  
+Users must stop, search, zoom, and manually add stops, which is unsafe and inefficient.
 
-## Setup
-1. Frontend env
-   - copy `client/.env.example` -> `client/.env`
-   - set `VITE_GOOGLE_MAPS_KEY`
-   - set `VITE_GOOGLE_CLIENT_ID` (optional for now)
+In real-world scenarios, commuters often need quick access to essentials like petrol pumps, restrooms, or hospitals, but there is no hands-free intelligent solution.
 
-2. Backend env
-   - copy `server/.env.example` -> `server/.env`
-   - set `GEMINI_KEY`
+---
 
-## Run
-Open 2 terminals from project root:
+## 💡 Project Description
+Smart Navigation Assistant (SNA) is a voice-first AI-powered navigation web app that allows users to interact with maps using natural speech.
 
-Terminal 1:
-```bash
-npm run dev:server
-```
+Instead of manually searching, users can simply say:
+> “Find nearest petrol pump”
 
-Terminal 2:
-```bash
-npm run dev:client
-```
+The system:
+- Understands the request using AI
+- Finds relevant places using Google APIs
+- Automatically adds it to the route
+- Updates map and ETA instantly
 
-Then open:
-- `http://localhost:5173`
+This creates a zero-touch navigation experience optimized for real-world driving.
 
-Backend health:
-- `http://localhost:8787/api/health`
+---
+
+## 🤖 Google AI Usage
+
+### 🧠 Tools / Models Used
+- Gemini API (Google AI)
+- Google Speech-to-Text API
+- Google Text-to-Speech API
+- Google Maps JavaScript API
+- Google Places API
+- Google Directions API
+
+---
+
+### ⚙️ How Google AI Was Used
+- Gemini AI interprets user intent from voice/text input  
+- Speech-to-Text converts voice into text  
+- Text-to-Speech provides voice responses  
+
+Flow:
+1. User speaks  
+2. Speech → text  
+3. Gemini processes intent  
+4. Places API fetches results  
+5. Route updates automatically  
+
+---
+
+## 📂 Proof of Google AI Usage
+Add screenshots inside `/proof` folder:
