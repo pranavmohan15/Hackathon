@@ -1,4 +1,4 @@
-﻿# Smart Navigation Assistant (React + Node)
+# Smart Navigation Assistant (React + Node)
 
 ## Structure
 - `client/` - React (Vite) frontend
@@ -32,4 +32,3 @@ Then open:
 
 Backend health:
 - `http://localhost:8787/api/health`
-
