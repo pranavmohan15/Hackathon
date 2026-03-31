@@ -1,0 +1,14 @@
+{
+  "name": "hackathon",
+  "version": "1.0.0",
+  "description": "SNA full-stack project (React + Node.js)",
+  "main": "index.js",
+  "scripts": {
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

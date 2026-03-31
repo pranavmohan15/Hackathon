@@ -1,0 +1,1293 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SNA - Smart Navigation Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        font-family: "Manrope", "Segoe UI", sans-serif;
+        --sna-blue: #1a237e;
+        --sna-green: #00c853;
+        --sna-bg: #eef3ff;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 10% 10%, rgba(26, 35, 126, 0.18), transparent 32%),
+          radial-gradient(circle at 90% 20%, rgba(0, 200, 83, 0.12), transparent 28%),
+          var(--sna-bg);
+      }
+
+      header {
+        height: 48px;
+      }
+
+      #content {
+        padding-top: 48px;
+      }
+
+      #map {
+        height: 70vh;
+        min-height: 360px;
+        border-radius: 1rem;
+      }
+
+      #chat-bubble {
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+      }
+
+      #chat-panel {
+        transform: translateY(calc(100% + 1rem));
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 260ms ease, opacity 260ms ease;
+      }
+
+      #chat-panel.open {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .message-appear {
+        animation: messageIn 220ms ease;
+      }
+
+      @keyframes messageIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .typing-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #94a3b8;
+        animation: typing 1s infinite ease-in-out;
+      }
+
+      .typing-dot:nth-child(2) {
+        animation-delay: 0.12s;
+      }
+
+      .typing-dot:nth-child(3) {
+        animation-delay: 0.24s;
+      }
+
+      @keyframes typing {
+        0%,
+        80%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.5;
+        }
+        40% {
+          transform: translateY(-3px);
+          opacity: 1;
+        }
+      }
+
+      #chat-mic-btn.mic-listening::after {
+        content: "";
+        position: absolute;
+        inset: -8px;
+        border-radius: 999px;
+        border: 2px solid rgba(37, 99, 235, 0.35);
+        animation: micPulse 1.25s infinite ease-out;
+      }
+
+      @keyframes micPulse {
+        from {
+          transform: scale(0.95);
+          opacity: 0.9;
+        }
+        to {
+          transform: scale(1.15);
+          opacity: 0;
+        }
+      }
+
+      #speaker-pill.speaking {
+        color: #2563eb;
+        background: rgba(37, 99, 235, 0.12);
+      }
+
+      .stop-pill {
+        animation: messageIn 220ms ease;
+      }
+
+      @media (max-width: 768px) {
+        #map {
+          border-radius: 0.85rem;
+          min-height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body class="text-slate-900">
+    <header
+      class="fixed inset-x-0 top-0 z-30 flex h-12 items-center justify-between bg-[#1a237e] px-5 text-white shadow-lg"
+    >
+      <div class="flex items-center gap-2 text-lg font-semibold tracking-wide">
+        <span class="rounded bg-white px-2 py-1 text-[#1a237e]">SNA</span>
+        <span class="text-sm font-medium opacity-90">Smart Navigation Assistant</span>
+      </div>
+      <div class="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-white/10 text-sm">
+        AB
+      </div>
+    </header>
+
+    <main id="content" class="flex min-h-screen flex-col px-4 pb-6 pt-3">
+      <section class="mx-auto w-full max-w-4xl space-y-3">
+        <div class="rounded-2xl border border-white/60 bg-white/90 p-4 shadow-lg shadow-slate-500/5 backdrop-blur">
+          <div class="flex flex-col gap-3 md:flex-row md:items-end">
+            <div class="w-full">
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">From</label>
+              <input
+                id="from-input"
+                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-[#1a237e] focus:outline-none"
+                placeholder="Enter pickup"
+                autocomplete="off"
+              />
+            </div>
+            <div class="w-full">
+              <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">To</label>
+              <input
+                id="to-input"
+                class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-[#1a237e] focus:outline-none"
+                placeholder="Enter destination"
+                autocomplete="off"
+              />
+            </div>
+            <button
+              id="swap-btn"
+              class="h-10 w-full rounded-lg border border-slate-200 bg-[#1a237e] text-xs font-semibold uppercase tracking-wide text-white shadow-sm transition hover:bg-[#2c3a99] md:w-20"
+            >
+              Swap
+            </button>
+          </div>
+
+          <div class="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+            <button
+              id="save-home"
+              class="rounded-full border border-slate-200 px-3 py-1 transition hover:border-[#1a237e] hover:text-[#1a237e]"
+            >
+              Save as Home
+            </button>
+            <button
+              id="save-college"
+              class="rounded-full border border-slate-200 px-3 py-1 transition hover:border-[#1a237e] hover:text-[#1a237e]"
+            >
+              Save as College
+            </button>
+            <span id="save-status" class="text-[11px] text-emerald-600"></span>
+          </div>
+
+          <div class="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Stops</p>
+              <p id="location-status" class="text-[11px] font-semibold text-slate-600">📍 Using route midpoint</p>
+            </div>
+            <div id="stops-list" class="mt-2 flex flex-wrap gap-2"></div>
+          </div>
+
+          <div
+            id="route-info"
+            class="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-100 bg-slate-900/90 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-white shadow-inner"
+          >
+            <span id="distance-display">Calculating distance...</span>
+            <span id="duration-display">Calculating time...</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-4 flex-1 px-0">
+        <div id="map" class="mx-auto w-full max-w-6xl shadow-2xl shadow-slate-500/20"></div>
+      </section>
+    </main>
+
+    <button
+      id="chat-bubble"
+      class="fixed bottom-6 right-6 z-40 flex items-center justify-center border border-white/60 bg-[#1a237e] text-white shadow-xl transition hover:scale-[1.02]"
+      aria-label="Open Assistant"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="1.9"
+          d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3zm0 0v3m-4 0h8m-9-6H5m14 0h-2"
+        />
+      </svg>
+    </button>
+
+    <section
+      id="chat-panel"
+      class="fixed inset-x-3 bottom-3 z-50 h-[45vh] min-h-[300px] rounded-2xl border border-slate-200 bg-[#f8fbff] shadow-2xl md:inset-x-auto md:right-6 md:w-[410px]"
+    >
+      <div class="flex h-full flex-col">
+        <div class="flex items-center justify-between rounded-t-2xl bg-[#1a237e] px-4 py-3 text-white">
+          <div>
+            <p class="text-sm font-semibold">SNA Assistant</p>
+            <p class="text-[11px] opacity-80">Voice + AI Chat</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <div
+              id="speaker-pill"
+              class="flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-[11px] font-semibold text-white transition"
+            >
+              <span id="speaker-icon">SPK</span>
+              <span id="speaker-label">Silent</span>
+            </div>
+            <button id="minimize-chat" class="rounded-full bg-white/15 p-2 hover:bg-white/25" aria-label="Minimize chat">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="chat-history" class="flex-1 space-y-3 overflow-y-auto px-3 py-3"></div>
+
+        <div class="border-t border-slate-200 bg-white px-3 py-2">
+          <div class="flex items-center gap-2">
+            <input
+              id="chat-input"
+              type="text"
+              placeholder="Ask for petrol pumps, restaurants, ATMs..."
+              class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#1a237e] focus:outline-none"
+            />
+            <button
+              id="chat-mic-btn"
+              class="relative flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-700 transition hover:bg-blue-100"
+              aria-label="Record voice"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3zm0 0v3m-4 0h8"
+                />
+              </svg>
+            </button>
+            <button
+              id="chat-send-btn"
+              class="flex h-10 w-10 items-center justify-center rounded-full bg-[#1a237e] text-white transition hover:bg-[#2c3a99]"
+              aria-label="Send message"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3.105 3.105a.75.75 0 01.82-.173l12 5a.75.75 0 010 1.386l-12 5A.75.75 0 012.75 13.5v-3.81a.75.75 0 01.489-.702L9.9 6.5 3.24 4.012a.75.75 0 01-.135-.907z" />
+              </svg>
+            </button>
+          </div>
+          <p id="voice-hint" class="mt-1 min-h-[18px] text-[11px] text-slate-500">
+            Tap mic, speak, then confirm text before sending.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <script>
+      let map;
+      let directionsService;
+      let directionsRenderer;
+      let placesService;
+      let fromAutocomplete;
+      let toAutocomplete;
+      let saveTimer;
+      let recognition;
+      let isListening = false;
+      let chatInitialized = false;
+      let lastDirectionsResult = null;
+      let typingNode = null;
+      let availableVoices = [];
+      let infoWindow;
+      let userPosition = null;
+
+      const waypointStops = [];
+
+      const CONFIG = {
+        GOOGLE_MAPS_KEY: "YOUR_GEMINI_API_KEY",
+        GEMINI_KEY: "YOUR_GEMINI_API_KEY",
+        GEMINI_MODEL: "gemini-2.0-flash-latest",
+        GOOGLE_CLIENT_ID: "YOUR_GOOGLE_CLIENT_ID",
+      };
+
+      const SYSTEM_PROMPT = `You are SNA - a smart navigation assistant for Kerala, India.
+You help users find nearby amenities while traveling.
+
+Current route context will be provided in each message.
+When a user asks for an amenity (petrol pump, toilet, restaurant, ATM, hospital, etc.):
+- Acknowledge their request warmly
+- Tell them you are searching nearby
+- Respond with: AMENITY_SEARCH:{"type":"<place_type>","keyword":"<search_term>"}
+
+place_type options: gas_station, restaurant, hospital, atm, convenience_store, lodging
+
+Keep responses short (2-3 sentences max). Be conversational and friendly.
+Use simple English. You serve everyday commuters in Kerala.`;
+      const systemPrompt = SYSTEM_PROMPT;
+
+      const savedKeys = {
+        home: "sna_home",
+        college: "sna_college",
+      };
+
+      const defaultPlaces = {
+        from: "Ernakulam, Kochi",
+        to: "Kakkanad, Kochi",
+      };
+
+      const currentRoute = {
+        origin: defaultPlaces.from,
+        destination: defaultPlaces.to,
+        distance: "unknown distance",
+        duration: "unknown time",
+      };
+
+      const keralaBounds = {
+        north: 12.8,
+        south: 8.0,
+        east: 77.7,
+        west: 74.5,
+      };
+
+      const AMENITY_EMOJI = {
+        gas_station: "⛽",
+        restaurant: "🍽️",
+        hospital: "🏥",
+        atm: "🏧",
+        convenience_store: "🚻",
+        lodging: "🛏️",
+      };
+
+      const chatBubble = document.getElementById("chat-bubble");
+      const chatPanel = document.getElementById("chat-panel");
+      const minimizeChatBtn = document.getElementById("minimize-chat");
+      const chatHistory = document.getElementById("chat-history");
+      const chatInput = document.getElementById("chat-input");
+      const chatMicBtn = document.getElementById("chat-mic-btn");
+      const chatSendBtn = document.getElementById("chat-send-btn");
+      const voiceHint = document.getElementById("voice-hint");
+      const speakerPill = document.getElementById("speaker-pill");
+      const speakerLabel = document.getElementById("speaker-label");
+      const stopsList = document.getElementById("stops-list");
+      const locationStatus = document.getElementById("location-status");
+
+      function initMap() {
+        const center = { lat: 9.9312, lng: 76.2673 };
+
+        map = new google.maps.Map(document.getElementById("map"), {
+          center,
+          zoom: 13,
+          gestureHandling: "greedy",
+        });
+
+        infoWindow = new google.maps.InfoWindow();
+
+        directionsService = new google.maps.DirectionsService();
+        directionsRenderer = new google.maps.DirectionsRenderer({
+          map,
+          suppressMarkers: false,
+          polylineOptions: {
+            strokeColor: "#00c853",
+            strokeWeight: 5,
+          },
+        });
+
+        placesService = new google.maps.places.PlacesService(map);
+
+        const bounds = new google.maps.LatLngBounds(
+          { lat: keralaBounds.south, lng: keralaBounds.west },
+          { lat: keralaBounds.north, lng: keralaBounds.east }
+        );
+
+        const fromInput = document.getElementById("from-input");
+        const toInput = document.getElementById("to-input");
+
+        const autoOptions = {
+          bounds,
+          componentRestrictions: { country: "IN" },
+          fields: ["formatted_address", "geometry"],
+          strictBounds: false,
+        };
+
+        fromAutocomplete = new google.maps.places.Autocomplete(fromInput, autoOptions);
+        toAutocomplete = new google.maps.places.Autocomplete(toInput, autoOptions);
+
+        fromAutocomplete.addListener("place_changed", () => {
+          const place = fromAutocomplete.getPlace();
+          if (place && place.formatted_address) {
+            fromInput.value = place.formatted_address;
+            calculateRoute();
+          }
+        });
+
+        toAutocomplete.addListener("place_changed", () => {
+          const place = toAutocomplete.getPlace();
+          if (place && place.formatted_address) {
+            toInput.value = place.formatted_address;
+            calculateRoute();
+          }
+        });
+
+        const savedHome = localStorage.getItem(savedKeys.home);
+        const savedCollege = localStorage.getItem(savedKeys.college);
+
+        fromInput.value = savedHome || defaultPlaces.from;
+        toInput.value = savedCollege || defaultPlaces.to;
+
+        currentRoute.origin = fromInput.value;
+        currentRoute.destination = toInput.value;
+
+        document.getElementById("swap-btn").addEventListener("click", () => {
+          const temp = fromInput.value;
+          fromInput.value = toInput.value;
+          toInput.value = temp;
+          calculateRoute();
+        });
+
+        document.getElementById("save-home").addEventListener("click", () => {
+          localStorage.setItem(savedKeys.home, fromInput.value.trim());
+          showSaveStatus("Home saved");
+        });
+
+        document.getElementById("save-college").addEventListener("click", () => {
+          localStorage.setItem(savedKeys.college, toInput.value.trim());
+          showSaveStatus("College saved");
+        });
+
+        [fromInput, toInput].forEach((input) => {
+          input.addEventListener("change", calculateRoute);
+          input.addEventListener("blur", calculateRoute);
+        });
+
+        stopsList.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) {
+            return;
+          }
+
+          if (target.dataset.removeIndex !== undefined) {
+            const idx = Number(target.dataset.removeIndex);
+            removeStop(idx);
+          }
+        });
+
+        bindChatEvents();
+        initVoiceInput();
+        initSpeechSynthesis();
+        requestUserLocation();
+        renderStopsPanel();
+        calculateRoute();
+      }
+
+      function showSaveStatus(message) {
+        const element = document.getElementById("save-status");
+        element.textContent = message;
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          element.textContent = "";
+        }, 2200);
+      }
+      function requestUserLocation() {
+        if (!navigator.geolocation) {
+          setLocationStatus(false);
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            userPosition = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            setLocationStatus(true);
+          },
+          () => {
+            userPosition = null;
+            setLocationStatus(false);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 7000,
+            maximumAge: 60000,
+          }
+        );
+      }
+
+      function setLocationStatus(isUsingGps) {
+        locationStatus.textContent = isUsingGps ? "📍 Using your location" : "📍 Using route midpoint";
+      }
+
+      function calculateRoute() {
+        const fromValue = document.getElementById("from-input").value.trim();
+        const toValue = document.getElementById("to-input").value.trim();
+
+        if (!fromValue || !toValue || !directionsService) {
+          return Promise.resolve(false);
+        }
+
+        currentRoute.origin = fromValue;
+        currentRoute.destination = toValue;
+
+        const waypoints = waypointStops.map((stop) => ({
+          location: stop.location,
+          stopover: true,
+        }));
+
+        return new Promise((resolve) => {
+          directionsService.route(
+            {
+              origin: fromValue,
+              destination: toValue,
+              waypoints,
+              optimizeWaypoints: false,
+              travelMode: google.maps.TravelMode.DRIVING,
+            },
+            (result, status) => {
+              if (status === "OK") {
+                lastDirectionsResult = result;
+                directionsRenderer.setDirections(result);
+                const totals = computeRouteTotals(result);
+                currentRoute.distance = totals.distanceText;
+                currentRoute.duration = totals.durationText;
+                document.getElementById("distance-display").textContent = `Distance: ${totals.distanceText}`;
+                document.getElementById("duration-display").textContent = `ETA: ${totals.durationText}`;
+                resolve(true);
+              } else {
+                currentRoute.distance = "unknown distance";
+                currentRoute.duration = "unknown time";
+                document.getElementById("distance-display").textContent = "Route unavailable";
+                document.getElementById("duration-display").textContent = "Please adjust locations";
+                resolve(false);
+              }
+            }
+          );
+        });
+      }
+
+      function computeRouteTotals(result) {
+        const legs = result.routes[0].legs || [];
+        let totalMeters = 0;
+        let totalSeconds = 0;
+
+        legs.forEach((leg) => {
+          totalMeters += (leg.distance && leg.distance.value) || 0;
+          totalSeconds += (leg.duration && leg.duration.value) || 0;
+        });
+
+        return {
+          distanceText: totalMeters ? `${(totalMeters / 1000).toFixed(1)} km` : "0 km",
+          durationText: formatDuration(totalSeconds),
+        };
+      }
+
+      function formatDuration(totalSeconds) {
+        if (!totalSeconds || totalSeconds < 60) {
+          return "under 1 min";
+        }
+
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.round((totalSeconds % 3600) / 60);
+
+        if (!hours) {
+          return `${minutes} min`;
+        }
+
+        if (!minutes) {
+          return `${hours} hr`;
+        }
+
+        return `${hours} hr ${minutes} min`;
+      }
+
+      function renderStopsPanel() {
+        if (!waypointStops.length) {
+          stopsList.innerHTML = '<p class="text-[11px] text-slate-500">No stops added yet.</p>';
+          return;
+        }
+
+        stopsList.innerHTML = "";
+
+        waypointStops.forEach((stop, index) => {
+          const item = document.createElement("div");
+          item.className = "stop-pill flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs shadow-sm";
+          item.innerHTML = `
+            <span class="max-w-[180px] truncate">${stop.emoji} ${escapeHtml(stop.name)}</span>
+            <button data-remove-index="${index}" class="rounded-full px-1 text-slate-500 hover:bg-slate-100 hover:text-red-600">✕</button>
+          `;
+          stopsList.appendChild(item);
+        });
+      }
+
+      function removeStop(index) {
+        const removed = waypointStops[index];
+        if (!removed) {
+          return;
+        }
+
+        if (removed.marker) {
+          removed.marker.setMap(null);
+        }
+
+        waypointStops.splice(index, 1);
+        renderStopsPanel();
+        calculateRoute();
+
+        const text = `Removed stop: ${removed.name}. Route updated.`;
+        addMessage("bot", text);
+        speakText(text);
+      }
+
+      function bindChatEvents() {
+        chatBubble.addEventListener("click", openChatPanel);
+        minimizeChatBtn.addEventListener("click", closeChatPanel);
+
+        chatSendBtn.addEventListener("click", sendCurrentMessage);
+        chatInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            sendCurrentMessage();
+          }
+        });
+
+        chatMicBtn.addEventListener("click", toggleListening);
+      }
+
+      function openChatPanel() {
+        chatPanel.classList.add("open");
+        chatBubble.classList.add("hidden");
+
+        if (!chatInitialized) {
+          chatInitialized = true;
+          addMessage(
+            "bot",
+            "Hi! I'm your navigation assistant. Ask me about petrol pumps, restaurants, or anything on your route!"
+          );
+        }
+
+        setTimeout(() => {
+          chatInput.focus();
+        }, 180);
+      }
+
+      function closeChatPanel() {
+        chatPanel.classList.remove("open");
+        chatBubble.classList.remove("hidden");
+      }
+
+      function addMessage(role, text) {
+        const wrapper = document.createElement("div");
+        wrapper.className = `message-appear flex ${role === "user" ? "justify-end" : "justify-start"}`;
+
+        const bubble = document.createElement("div");
+        bubble.className =
+          role === "user"
+            ? "max-w-[85%] rounded-2xl rounded-br-md bg-blue-600 px-3 py-2 text-sm text-white shadow"
+            : "max-w-[85%] rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm";
+
+        const textNode = document.createElement("p");
+        textNode.className = "whitespace-pre-wrap";
+        textNode.textContent = text;
+
+        const timeNode = document.createElement("p");
+        timeNode.className = `mt-1 text-[10px] ${role === "user" ? "text-blue-100" : "text-slate-400"}`;
+        timeNode.textContent = new Date().toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+
+        bubble.appendChild(textNode);
+        bubble.appendChild(timeNode);
+        wrapper.appendChild(bubble);
+        chatHistory.appendChild(wrapper);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+
+      function addAmenityCard(stop) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "message-appear flex justify-start";
+
+        const card = document.createElement("div");
+        card.className = "max-w-[92%] rounded-xl border border-slate-200 bg-white p-3 shadow-sm";
+        card.innerHTML = `
+          <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Amenity Added</p>
+          <p class="mt-1 text-sm font-semibold text-slate-800">${stop.emoji} ${escapeHtml(stop.name)}</p>
+          <p class="mt-1 text-xs text-slate-600">⭐ ${stop.ratingText}</p>
+          <p class="mt-1 text-xs text-slate-600">${escapeHtml(stop.address)}</p>
+          <p class="mt-2 text-[10px] text-slate-400">${new Date().toLocaleTimeString("en-IN", {
+            hour: "numeric",
+            minute: "2-digit",
+          })}</p>
+        `;
+
+        wrapper.appendChild(card);
+        chatHistory.appendChild(wrapper);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+
+      function showTypingIndicator() {
+        hideTypingIndicator();
+
+        typingNode = document.createElement("div");
+        typingNode.className = "message-appear flex justify-start";
+        typingNode.innerHTML =
+          '<div class="inline-flex items-center gap-1 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3 py-2 shadow-sm"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>';
+
+        chatHistory.appendChild(typingNode);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+
+      function hideTypingIndicator() {
+        if (typingNode) {
+          typingNode.remove();
+          typingNode = null;
+        }
+      }
+
+      async function sendCurrentMessage() {
+        const userMessage = chatInput.value.trim();
+        if (!userMessage) {
+          return;
+        }
+
+        addMessage("user", userMessage);
+        chatInput.value = "";
+        voiceHint.textContent = "Thinking...";
+        showTypingIndicator();
+
+        try {
+          const localIntent = detectExactIntent(userMessage);
+
+          if (localIntent && localIntent.kind === "route") {
+            hideTypingIndicator();
+            const routeText = `Current route is ${currentRoute.origin} to ${currentRoute.destination}. Distance is about ${currentRoute.distance} and travel time is about ${currentRoute.duration}.`;
+            addMessage("bot", routeText);
+            speakText(routeText);
+            voiceHint.textContent = "Tap mic, speak, then confirm text before sending.";
+            return;
+          }
+
+          let rawReply = "";
+
+          if (localIntent && localIntent.kind === "amenity") {
+            rawReply = `Sure, I am searching nearby now. AMENITY_SEARCH:${JSON.stringify(localIntent.search)}`;
+          } else {
+            rawReply = await fetchAssistantReply(userMessage);
+          }
+
+          hideTypingIndicator();
+
+          const parsed = parseAmenityDirective(rawReply);
+
+          if (parsed.displayText) {
+            addMessage("bot", parsed.displayText);
+            speakText(parsed.displayText);
+          }
+
+          if (parsed.amenitySearch) {
+            await runAmenitySearch(parsed.amenitySearch);
+          }
+        } catch (error) {
+          hideTypingIndicator();
+          const fallback = "Sorry, I had trouble connecting right now. Please try again in a moment.";
+          addMessage("bot", fallback);
+          speakText(fallback);
+        }
+
+        voiceHint.textContent = "Tap mic, speak, then confirm text before sending.";
+      }
+
+      function detectExactIntent(message) {
+        const normalized = message.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+
+        if (normalized === "wheres the nearest petrol pump" || normalized === "where is the nearest petrol pump") {
+          return {
+            kind: "amenity",
+            search: { type: "gas_station", keyword: "petrol pump" },
+          };
+        }
+
+        if (normalized === "i need a toilet") {
+          return {
+            kind: "amenity",
+            search: { type: "convenience_store", keyword: "toilet" },
+          };
+        }
+
+        if (normalized === "find me a restaurant") {
+          return {
+            kind: "amenity",
+            search: { type: "restaurant", keyword: "restaurant" },
+          };
+        }
+
+        if (normalized === "is there an atm nearby") {
+          return {
+            kind: "amenity",
+            search: { type: "atm", keyword: "atm" },
+          };
+        }
+
+        if (normalized === "i need a hospital") {
+          return {
+            kind: "amenity",
+            search: { type: "hospital", keyword: "hospital" },
+          };
+        }
+
+        if (normalized === "whats my route" || normalized === "what is my route") {
+          return { kind: "route" };
+        }
+
+        return null;
+      }
+
+      function getRouteContextString(userMessage) {
+        return `[Route: ${currentRoute.origin} to ${currentRoute.destination}, ~${currentRoute.distance}, ~${currentRoute.duration}] User says: ${userMessage}`;
+      }
+
+      async function fetchAssistantReply(userMessage) {
+        if (!navigator.onLine) throw new Error("offline");
+
+        if (!CONFIG.GEMINI_KEY || CONFIG.GEMINI_KEY === "YOUR_GEMINI_API_KEY") {
+          return "I am ready to help! Add your Gemini API key to CONFIG to enable live AI responses.";
+        }
+
+        const routeContext = getRouteContextString(userMessage);
+        const cacheKey = `sna_cache_${routeContext}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) return cached;
+
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.GEMINI_MODEL}:generateContent?key=${CONFIG.GEMINI_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: {
+                parts: [{ text: systemPrompt }],
+              },
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: routeContext }],
+                },
+              ],
+              generationConfig: {
+                maxOutputTokens: 220,
+                temperature: 0.7,
+              },
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error("Gemini error:", err);
+          throw new Error("api");
+        }
+
+        const data = await res.json();
+        const text =
+          data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+          "I am checking nearby options for you.";
+
+        sessionStorage.setItem(cacheKey, text);
+        return text;
+      }
+
+      function parseAmenityDirective(botText) {
+        const tagMatch = botText.match(/AMENITY_SEARCH:\s*(\{.*?\})/s);
+
+        if (!tagMatch) {
+          return {
+            displayText: botText,
+            amenitySearch: null,
+          };
+        }
+
+        let amenitySearch = null;
+
+        try {
+          amenitySearch = JSON.parse(tagMatch[1]);
+        } catch (error) {
+          amenitySearch = null;
+        }
+
+        const displayText = botText.replace(tagMatch[0], "").trim() || "I am searching nearby options for you now.";
+
+        return {
+          displayText,
+          amenitySearch,
+        };
+      }
+
+      async function runAmenitySearch(searchSpec) {
+        if (!placesService || !searchSpec || !searchSpec.type) {
+          return;
+        }
+
+        if (waypointStops.length >= 3) {
+          const limitText = "You already have 3 stops. Remove one first?";
+          addMessage("bot", limitText);
+          speakText(limitText);
+          return;
+        }
+
+        const searchCenter = getSearchCenter();
+
+        const request = {
+          location: searchCenter,
+          radius: 3000,
+          type: searchSpec.type,
+          keyword: searchSpec.keyword || undefined,
+        };
+
+        const places = await new Promise((resolve) => {
+          placesService.nearbySearch(request, (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length) {
+              resolve(results);
+              return;
+            }
+            resolve([]);
+          });
+        });
+
+        if (!places.length) {
+          const noResultText = "I could not find a good nearby match right now. Try another keyword.";
+          addMessage("bot", noResultText);
+          speakText(noResultText);
+          return;
+        }
+
+        const sorted = places
+          .filter((place) => place.geometry && place.geometry.location)
+          .map((place) => {
+            const km = distanceBetween(searchCenter.lat(), searchCenter.lng(), place.geometry.location.lat(), place.geometry.location.lng());
+            return { place, km };
+          })
+          .sort((a, b) => a.km - b.km);
+
+        const top3 = sorted.slice(0, 3);
+        const selected = top3[0];
+
+        if (!selected) {
+          const noResultText = "I could not find a good nearby match right now. Try another keyword.";
+          addMessage("bot", noResultText);
+          speakText(noResultText);
+          return;
+        }
+
+        if (waypointStops.some((stop) => stop.placeId === selected.place.place_id)) {
+          const duplicateText = `${selected.place.name} is already in your stops.`;
+          addMessage("bot", duplicateText);
+          speakText(duplicateText);
+          return;
+        }
+
+        const stop = createStopFromPlace(selected.place, searchSpec.type, selected.km);
+        waypointStops.push(stop);
+        renderStopsPanel();
+
+        const routeOk = await calculateRoute();
+
+        if (!routeOk) {
+          waypointStops.pop();
+          if (stop.marker) {
+            stop.marker.setMap(null);
+          }
+          renderStopsPanel();
+          const failText = "I found a place, but could not add it to your route right now.";
+          addMessage("bot", failText);
+          speakText(failText);
+          return;
+        }
+
+        const etaToStop = getEtaToStop(waypointStops.length - 1);
+        const confirmText = `Found ${stop.name} just ${stop.distanceKm.toFixed(1)} km away. I've added it to your route. You'll arrive there in about ${etaToStop}.`;
+        addMessage("bot", confirmText);
+        speakText(confirmText);
+        addAmenityCard(stop);
+      }
+
+      function createStopFromPlace(place, type, distanceKmFromSearch) {
+        const emoji = AMENITY_EMOJI[type] || "📍";
+        const position = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+        };
+
+        const marker = new google.maps.Marker({
+          map,
+          position,
+          title: place.name,
+          label: {
+            text: emoji,
+            fontSize: "18px",
+          },
+        });
+
+        const distanceFromUser = getDistanceFromCurrentLocation(position);
+        const ratingText = typeof place.rating === "number" ? place.rating.toFixed(1) : "N/A";
+        const address = place.vicinity || place.formatted_address || "Address unavailable";
+
+        marker.addListener("click", () => {
+          infoWindow.setContent(`
+            <div style="max-width:220px;font-family:Manrope,Segoe UI,sans-serif;">
+              <p style="margin:0 0 4px;font-weight:700;">${emoji} ${escapeHtml(place.name)}</p>
+              <p style="margin:0 0 4px;font-size:12px;">⭐ ${ratingText}</p>
+              <p style="margin:0 0 4px;font-size:12px;">${escapeHtml(address)}</p>
+              <p style="margin:0;font-size:12px;">Distance: ${distanceFromUser.toFixed(1)} km</p>
+            </div>
+          `);
+          infoWindow.open(map, marker);
+        });
+
+        return {
+          placeId: place.place_id,
+          name: place.name,
+          location: position,
+          marker,
+          type,
+          emoji,
+          address,
+          ratingText,
+          distanceKm: distanceKmFromSearch,
+        };
+      }
+
+      function getEtaToStop(stopIndex) {
+        if (!lastDirectionsResult || !lastDirectionsResult.routes || !lastDirectionsResult.routes[0]) {
+          return "unknown time";
+        }
+
+        const legs = lastDirectionsResult.routes[0].legs || [];
+        let totalSeconds = 0;
+
+        for (let i = 0; i <= stopIndex && i < legs.length; i += 1) {
+          totalSeconds += (legs[i].duration && legs[i].duration.value) || 0;
+        }
+
+        return formatDuration(totalSeconds);
+      }
+
+      function getSearchCenter() {
+        if (userPosition) {
+          return new google.maps.LatLng(userPosition.lat, userPosition.lng);
+        }
+
+        const midpoint = getRouteMidpoint();
+        return midpoint;
+      }
+
+      function getRouteMidpoint() {
+        if (lastDirectionsResult && lastDirectionsResult.routes && lastDirectionsResult.routes[0]) {
+          const path = lastDirectionsResult.routes[0].overview_path || [];
+          if (path.length) {
+            return path[Math.floor(path.length / 2)];
+          }
+        }
+
+        return map.getCenter();
+      }
+
+      function getDistanceFromCurrentLocation(position) {
+        if (userPosition) {
+          return distanceBetween(userPosition.lat, userPosition.lng, position.lat, position.lng);
+        }
+
+        const midpoint = getRouteMidpoint();
+        return distanceBetween(midpoint.lat(), midpoint.lng(), position.lat, position.lng);
+      }
+
+      function distanceBetween(lat1, lng1, lat2, lng2) {
+        const toRad = (value) => (value * Math.PI) / 180;
+        const earth = 6371;
+
+        const dLat = toRad(lat2 - lat1);
+        const dLng = toRad(lng2 - lng1);
+
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earth * c;
+      }
+      function initVoiceInput() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+          chatMicBtn.disabled = true;
+          chatMicBtn.classList.add("opacity-40", "cursor-not-allowed");
+          voiceHint.textContent = "Voice input is not supported in this browser.";
+          return;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.lang = "en-IN";
+        recognition.interimResults = true;
+        recognition.continuous = false;
+
+        recognition.onstart = () => {
+          isListening = true;
+          chatMicBtn.classList.add("mic-listening");
+          voiceHint.textContent = "Listening... speak naturally in Indian English.";
+        };
+
+        recognition.onresult = (event) => {
+          let transcript = "";
+
+          for (let i = event.resultIndex; i < event.results.length; i += 1) {
+            transcript += event.results[i][0].transcript;
+          }
+
+          chatInput.value = transcript.trim();
+          voiceHint.textContent = "Transcription ready. Edit if needed, then press Send.";
+        };
+
+        recognition.onerror = () => {
+          isListening = false;
+          chatMicBtn.classList.remove("mic-listening");
+          const errorText = "Sorry, couldn't hear that. Please try again.";
+          addMessage("bot", errorText);
+          speakText(errorText);
+          voiceHint.textContent = "Mic error. Tap again to retry.";
+        };
+
+        recognition.onend = () => {
+          isListening = false;
+          chatMicBtn.classList.remove("mic-listening");
+          if (chatInput.value.trim()) {
+            voiceHint.textContent = "Transcription ready. Edit if needed, then press Send.";
+          }
+        };
+      }
+
+      function toggleListening() {
+        if (!recognition) {
+          return;
+        }
+
+        if (isListening) {
+          recognition.stop();
+          return;
+        }
+
+        chatInput.value = "";
+        recognition.start();
+      }
+
+      function initSpeechSynthesis() {
+        if (!window.speechSynthesis) {
+          return;
+        }
+
+        availableVoices = window.speechSynthesis.getVoices();
+
+        window.speechSynthesis.onvoiceschanged = () => {
+          availableVoices = window.speechSynthesis.getVoices();
+        };
+      }
+
+      function getPreferredVoice() {
+        if (!availableVoices.length) {
+          availableVoices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+        }
+
+        const indian = availableVoices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith("en-in"));
+        if (indian) {
+          return indian;
+        }
+
+        const american = availableVoices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith("en-us"));
+        if (american) {
+          return american;
+        }
+
+        return availableVoices[0] || null;
+      }
+
+      function setSpeakingState(isSpeaking) {
+        if (isSpeaking) {
+          speakerPill.classList.add("speaking");
+          speakerLabel.textContent = "Speaking";
+          return;
+        }
+
+        speakerPill.classList.remove("speaking");
+        speakerLabel.textContent = "Silent";
+      }
+
+      function speakText(text) {
+        if (!window.speechSynthesis || !text) {
+          return;
+        }
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+
+        const voice = getPreferredVoice();
+        if (voice) {
+          utterance.voice = voice;
+          utterance.lang = voice.lang;
+        } else {
+          utterance.lang = "en-US";
+        }
+
+        utterance.onstart = () => setSpeakingState(true);
+        utterance.onend = () => setSpeakingState(false);
+        utterance.onerror = () => setSpeakingState(false);
+
+        window.speechSynthesis.speak(utterance);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      window.initMap = initMap;
+    </script>
+
+    <script>
+      (function loadMaps() {
+        const script = document.createElement("script");
+        script.async = true;
+        script.defer = true;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(CONFIG.GOOGLE_MAPS_KEY)}&libraries=places&loading=async`;
+        script.onload = () => {
+          if (typeof window.initMap === "function") {
+            window.initMap();
+          }
+        };
+        document.body.appendChild(script);
+      })();
+    </script>
+  </body>
+</html>
